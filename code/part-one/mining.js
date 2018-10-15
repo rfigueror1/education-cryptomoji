@@ -19,6 +19,19 @@ class MineableTransaction {
    */
   constructor(privateKey, recipient = null, amount) {
     // Enter your solution here
+    const publicKey = signing.getPublicKey(privateKey);
+    this.amount = amount;
+
+    if (recipient !== null) {
+      this.source = publicKey;
+      this.recipient = recipient;
+    } else {
+      this.source = null;
+      this.recipient = publicKey;
+    }
+
+    const toSign = this.source + this.recipient + amount;
+    this.signature = signing.sign(privateKey, toSign);
 
   }
 }
@@ -35,7 +48,9 @@ class MineableBlock extends Block {
    */
   constructor(transactions, previousHash) {
     // Your code here
-
+    super(transactions, previousHash);
+    this.hash = '';
+    this.nonce = null;
   }
 }
 
@@ -63,7 +78,14 @@ class MineableChain extends Blockchain {
    */
   constructor() {
     // Your code here
+    super();
+    const genesis = new MineableBlock([], null);
+    this.blocks = [ genesis ];
 
+    this.difficulty = 2;
+    this.reward = 100;
+
+    this._pending = [];
   }
 
   /**
@@ -79,7 +101,7 @@ class MineableChain extends Blockchain {
    */
   addTransaction(transaction) {
     // Your code here
-
+    this._pending.push(transaction);
   }
 
   /**
@@ -98,6 +120,21 @@ class MineableChain extends Blockchain {
    */
   mine(privateKey) {
     // Your code here
+    var reward_transaction = new MineableTransaction(privateKey, null, this.reward);
+    const pendingTransactions = this._pending.concat(reward);
+    const previousHash = this.getHeadBlock().hash;
+
+    const block = new MineableBlock(pendingTransactions, previousHash);
+    const zeros = '0'.repeat(this.difficulty);
+    let nonce = 0;
+
+    while (block.hash.slice(0, this.difficulty) !== zeros) {
+      block.calculateHash(nonce);
+      nonce++;
+    }
+
+    this.blocks.push(block);
+    this._pending = [];
 
   }
 }
@@ -112,15 +149,54 @@ class MineableChain extends Blockchain {
  *   - any hash other than genesis's that doesn't start with the right
  *     number of zeros
  *   - any block that has more than one transaction with a null source
- *   - any transaction with a null source that has an amount different
+ *   - any transaction wit a null source that has an amount different
  *     than the reward
  *   - any public key that ever goes into a negative balance by sending
  *     funds they don't have
  */
 const isValidMineableChain = blockchain => {
-  // Your code here
+  const zeros = '0'.repeat(blockchain.difficulty);
+  const { blocks } = blockchain;
 
+  // All blocks other than genesis begin with the right number of zeros
+  if (blocks.slice(1).some(b => b.hash.slice(0, zeros.length) !== zeros)) {
+    return false;
+  }
+
+  const balances = {};
+
+  for (const { transactions } of blocks) {
+    const rewards = transactions.filter(t => !t.source);
+
+    // The block has no more than one reward transaction
+    if (rewards.length > 1) {
+      return false;
+    }
+
+    // If present, the reward transaction has the correct amount
+    if (rewards[0] && rewards[0].amount !== blockchain.reward) {
+      return false;
+    }
+
+    // Each transaction only withdraws from keys with enough funds
+    for (const { source, recipient, amount } of transactions) {
+      if (source) {
+        balances[source] = balances[source] || 0;
+        balances[source] = balances[source] - amount;
+
+        if (balances[source] < 0) {
+          return false;
+        }
+      }
+
+      balances[recipient] = balances[recipient] || 0;
+      balances[recipient] = balances[recipient] + amount;
+    }
+  }
+
+  return true;
 };
+
 
 module.exports = {
   MineableTransaction,

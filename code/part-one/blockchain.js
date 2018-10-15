@@ -23,7 +23,11 @@ class Transaction {
    */
   constructor(privateKey, recipient, amount) {
     // Enter your solution here
-
+    this.privateKey = privateKey;
+    this.recipient = recipient;
+    this.amount = amount;
+    this.source = signing.getPublicKey(privateKey);
+    this.signature = signing.sign(privateKey,this.source+recipient+amount+'');
   }
 }
 
@@ -45,7 +49,9 @@ class Block {
    */
   constructor(transactions, previousHash) {
     // Your code here
-
+    this.transactions = transactions;
+    this.previousHash = previousHash;
+    this.calculateHash(0);
   }
 
   /**
@@ -59,7 +65,10 @@ class Block {
    */
   calculateHash(nonce) {
     // Your code here
-
+   const transactionString = this.transactions.map(t => t.signature).join('');
+   const toHash = this.previousHash + transactionString + nonce;
+   this.nonce = nonce;
+   this.hash = createHash('sha512').update(toHash).digest('hex');
   }
 }
 
@@ -79,7 +88,7 @@ class Blockchain {
    */
   constructor() {
     // Your code here
-
+    this.blocks = [new Block([], null)]
   }
 
   /**
@@ -87,7 +96,7 @@ class Blockchain {
    */
   getHeadBlock() {
     // Your code here
-
+    return this.blocks[this.blocks.length - 1];
   }
 
   /**
@@ -96,7 +105,8 @@ class Blockchain {
    */
   addBlock(transactions) {
     // Your code here
-
+    const block = new Block(transactions, this.getHeadBlock().hash);
+    this.blocks.push(block);
   }
 
   /**
@@ -110,7 +120,18 @@ class Blockchain {
    */
   getBalance(publicKey) {
     // Your code here
-
+    var balance = 0;
+    this.blocks.map( (i)  => {
+      i.transactions.map( (transaction) => {
+        if(transaction.source === publicKey){
+          balance = balance - transaction.amount
+        }
+        if(transaction.recipient === publicKey){
+          balance = balance + transaction.amount
+        }
+      } )
+    })
+    return balance;
   }
 }
 
