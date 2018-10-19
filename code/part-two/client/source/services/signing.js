@@ -11,7 +11,11 @@ import { randomBytes, createHash } from 'crypto';
  */
 export const createPrivateKey = () => {
   // Enter your solution here
-
+    let privKey
+	do {
+  	privKey = randomBytes(32)
+	} while (!secp256k1.privateKeyVerify(privKey))
+	return privKey.toString('hex')
 };
 
 /**
@@ -20,7 +24,11 @@ export const createPrivateKey = () => {
  */
 export const getPublicKey = privateKey => {
   // Your code here
-
+  // Your code here
+  var buf = Buffer.from(privateKey, 'hex');
+  var pubKey = secp256k1.publicKeyCreate(buf)
+  // console.log(pubKey)
+  return pubKey.toString('hex');
 };
 
 /**
@@ -40,7 +48,9 @@ export const getPublicKey = privateKey => {
  */
 export const createKeys = () => {
   // Your code here
-
+  var privKey = createPrivateKey();
+  var pubKey = getPublicKey(privKey);
+  return {privateKey:privKey, publicKey:pubKey};
 };
 
 /**
@@ -49,5 +59,14 @@ export const createKeys = () => {
  */
 export const sign = (privateKey, message) => {
   // Your code here
+  var buf = Buffer.from(privateKey, 'hex');
+  
+  var hash = createHash('sha256')
+   .update(message)
+   .digest('hex');
+  
+  hash = Buffer.from(hash, 'hex');
 
+  var sig = secp256k1.sign(hash, buf)
+  return sig.signature.toString('hex');
 };

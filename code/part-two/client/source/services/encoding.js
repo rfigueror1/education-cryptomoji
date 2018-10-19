@@ -15,7 +15,7 @@
  */
 export const encode = object => {
   // Enter your solution here
-
+  return Buffer.from(JSON.stringify(object, Object.keys(object).sort()));
 };
 
 /**
@@ -29,5 +29,6 @@ export const encode = object => {
  */
 export const decode = base64Str => {
   // Your code here
-
+  var buffer = Buffer.from(base64Str, 'base64');
+  return JSON.parse(buffer.toString());
 };

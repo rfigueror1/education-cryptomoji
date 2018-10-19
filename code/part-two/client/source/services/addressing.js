@@ -26,6 +26,7 @@ const PREFIXES = {
  */
 export const getCollectionAddress = (publicKey = null) => {
   // Enter your solution here
+  
 
 };
 

@@ -29,7 +29,34 @@ const NAMESPACE = '5f4d76';
  */
 export const createTransaction = (privateKey, payload) => {
   // Enter your solution here
+  var payloadBytes = encode(payload);
 
+  //In cryptography, In cryptography, a nonce is an arbitrary number that can be used just once. 
+  //It is similar in spirit to a nonce word, hence the name. 
+  //It is often a random or pseudo-random number issued in an authentication protocol to 
+  //ensure that old communications cannot be reused in replay attacks.
+
+  var transactionHeader = TransactionHeader.encode({familyName:FAMILY_NAME,
+   familyVersion:FAMILY_VERSION,
+   familyName: FAMILY_NAME, 
+   nameSpace:NAMESPACE,
+   signerPublicKey:getPublicKey(privateKey),
+   batcherPublicKey: getPublicKey(privateKey),
+   inputs:[ NAMESPACE ],
+   outputs: [ NAMESPACE ],
+   nonce: (Math.random() * 10 ** 18).toString(36),
+   payloadSha512: createHash('sha512').update(payloadBytes).digest('hex')
+  }).finish()
+
+  const signature = sign(privateKey, transactionHeader)
+
+  const transaction = Transaction.create({
+    header: transactionHeader,
+    headerSignature: signature,
+    payload: payloadBytes
+  })
+
+  return transaction;
 };
 
 /**
@@ -41,6 +68,23 @@ export const createTransaction = (privateKey, payload) => {
  */
 export const createBatch = (privateKey, transactions) => {
   // Your code here
+
+  if (!Array.isArray(transactions)) {
+    transactions = [ transactions ];
+  }
+
+  const batchHeaderBytes = BatchHeader.encode({
+    signerPublicKey: getPublicKey(privateKey),
+    transactionIds: transactions.map((txn) => txn.headerSignature),
+  }).finish()
+
+  const signature = sign(privateKey, batchHeaderBytes)
+
+  return Batch.create({
+    header: batchHeaderBytes,
+    headerSignature: signature,
+    transactions: transactions
+  });
 
 };
 
@@ -74,5 +118,12 @@ export const encodeBatches = batches => {
  */
 export const encodeAll = (privateKey, payloads) => {
   // Your code here
+  if (!Array.isArray(payloads)) {
+    payloads = [ payloads ];
+  }
+  var transactions = payloads.map( (payload) => createTransaction(privateKey, payload));
+  var batch = transactions.map( () => createBatch(privateKey, transactions) );
+  var batchList = encodeBatches(batch)
+  return batchList;
 
 };
